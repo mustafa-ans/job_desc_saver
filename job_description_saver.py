@@ -2,6 +2,9 @@
 """
 Job Description Saver
 Saves pasted job descriptions to PDF and archives raw text
+Copies cover letter into the same job-specific subfolder
+Updates local Excel tracker
+
 Supports:
   :back    -> go to previous question
   :restart -> restart metadata entry
@@ -14,9 +17,12 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from datetime import datetime
 import os
 import sys
+import shutil
+import openpyxl
 import pyperclip
 
 OUTPUT_DIR = r"REMOVED_LOCAL_PATH"
+EXCEL_PATH = r"REMOVED_LOCAL_PATH"
 
 
 def clear_console():
@@ -126,6 +132,52 @@ def copy_to_clipboard(text):
         print(f"⚠ Could not copy to clipboard: {e}")
 
 
+def get_portal_name(choice):
+    mapping = {
+        "1": "Linkedin",
+        "2": "Direct",
+        "3": "Website",
+        "4": "Email",
+        "5": "Linkedin Easy Apply"
+    }
+    return mapping.get(choice, "Unknown")
+
+
+def append_to_excel(row_data):
+    """Appends data to the local Excel tracker"""
+    try:
+        wb = openpyxl.load_workbook(EXCEL_PATH)
+        ws = wb.active
+        ws.append(row_data)
+        wb.save(EXCEL_PATH)
+        return True
+    except Exception as e:
+        print(f"✗ Error updating Excel: {e}")
+        return False
+
+
+def copy_cover_letter_to_folder(source_path, destination_folder):
+    """Copy cover letter file into the job folder"""
+    try:
+        if not source_path.strip():
+            print("⚠ No cover letter path provided. Skipping copy.")
+            return ""
+
+        source_path = source_path.strip().strip('"')
+
+        if not os.path.isfile(source_path):
+            print(f"⚠ Cover letter file not found: {source_path}")
+            return ""
+
+        destination_path = os.path.join(destination_folder, os.path.basename(source_path))
+        shutil.copy2(source_path, destination_path)
+        print(f"✓ Cover letter copied to: {destination_path}")
+        return destination_path
+    except Exception as e:
+        print(f"⚠ Error copying cover letter: {e}")
+        return ""
+
+
 def collect_job_metadata():
     """
     Collect company name, website, and job title with support for:
@@ -168,6 +220,13 @@ def collect_job_metadata():
             index = 0
             continue
 
+        if cmd == ":cls":
+            clear_console()
+            print("Metadata entry restarted (console cleared).\n")
+            answers = {k: "" for k in answers}
+            index = 0
+            continue
+
         if cmd == ":back":
             if index == 0:
                 print("Already at the first question.")
@@ -200,7 +259,7 @@ def confirm_metadata(company_name, company_website, job_title):
         elif confirm == "n":
             return False
         else:
-            print("Please enter y or n.")
+            return True
 
 
 def main():
@@ -212,12 +271,11 @@ def main():
     print()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    archive_dir = os.path.join(OUTPUT_DIR, "job_desc_txt_archive")
-    os.makedirs(archive_dir, exist_ok=True)
 
     print("Commands available while answering metadata:")
     print("  :back    -> redo previous answer")
     print("  :restart -> restart all metadata fields")
+    print("  :cls     -> clear console")
     print("  :quit    -> exit program")
     print()
 
@@ -264,14 +322,17 @@ def main():
 
     base_filename = f"{safe_company}_{safe_job_title}_{timestamp}"
 
-    txt_filename = os.path.join(archive_dir, f"{base_filename}.txt")
+    job_folder = os.path.join(OUTPUT_DIR, base_filename)
+    os.makedirs(job_folder, exist_ok=True)
+
+    txt_filename = os.path.join(job_folder, f"{base_filename}.txt")
     try:
         save_raw_text(job_text, txt_filename)
     except Exception as e:
         print(f"✗ Error saving text archive: {e}")
 
-    docx_filename = os.path.join(OUTPUT_DIR, f"temp_{base_filename}.docx")
-    pdf_filename = os.path.join(OUTPUT_DIR, f"{base_filename}.pdf")
+    docx_filename = os.path.join(job_folder, f"temp_{base_filename}.docx")
+    pdf_filename = os.path.join(job_folder, f"{base_filename}.pdf")
 
     try:
         save_to_word(job_text, docx_filename, job_title, company_name, company_website)
@@ -296,12 +357,59 @@ def main():
 
     copy_to_clipboard(final_created_file)
 
+    print("\n--- Cover Letter Copy ---")
+    cover_letter_path = input("Enter full path to cover letter file (optional, press Enter to skip): ").strip()
+    copied_cover_letter_path = copy_cover_letter_to_folder(cover_letter_path, job_folder)
+
+    print("\n--- Update Excel Tracker ---")
+    job_id = input("Job ID (optional): ").strip()
+    print("Portal: 1-Linkedin, 2-Direct, 3-Website, 4-Email")
+    portal_choice = input("Select portal (1-4): ").strip()
+    job_link = input("Job Link: ").strip()
+    job_type = input("Type (Startup/Mid/Big): ").strip()
+    industry = input("Industry: ").strip()
+    location = input("Location: ").strip()
+    status = input("Status: ").strip()
+    docs_sent = input("Docs Sent: ").strip()
+    todo_done = input("TO-DO (optional): ").strip()
+    hr_name = input("HR Name: ").strip()
+    hr_contact = input("HR Contact: ").strip()
+    comments = input("Comments (optional): ").strip()
+    id_pw = input("ID/PW (optional): ").strip()
+
+    row_data = [
+        job_title,                              # A: Position
+        job_id,                                 # B: ID
+        datetime.now().strftime("%Y-%m-%d"),    # C: Date
+        "",                                     # D: Interview on
+        "Yes",                                  # E: Applied
+        get_portal_name(portal_choice),         # F: Portal
+        job_link,                               # G: Link
+        company_name,                           # H: Company
+        job_type,                               # I: Type
+        industry,                               # J: Industry
+        location,                               # K: Location
+        status,                                 # L: Status
+        docs_sent,                              # M: Docs
+        todo_done,                              # N: TODO
+        hr_name,                                # O: HR Name
+        hr_contact,                             # P: HR Contact
+        comments,                               # Q: Comments
+        id_pw,                                  # R: ID/PW
+        job_folder                              # S: Path to JD in explorer
+    ]
+
+    if append_to_excel(row_data):
+        print("✓ Excel tracker updated successfully.")
+
     print()
     print("=" * 80)
     print("DONE!")
+    print(f"Job folder: {job_folder}")
     print(f"Main output file: {final_created_file}")
+    if copied_cover_letter_path:
+        print(f"Copied cover letter: {copied_cover_letter_path}")
     print(f"Text archive file: {txt_filename}")
-    print(f"Output directory: {OUTPUT_DIR}")
     print("=" * 80)
 
 
