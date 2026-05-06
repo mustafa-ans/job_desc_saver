@@ -261,6 +261,56 @@ def confirm_metadata(company_name, company_website, job_title):
         else:
             return True
 
+def sanitize_name(text):
+    text = "".join(c for c in text if c.isalnum() or c in (' ', '-', '_')).strip()
+    text = "_".join(text.split())
+    return text or "untitled"
+
+
+def build_safe_base_name(output_dir, company_name, job_title, extra_suffix=""):
+    """
+    Build a base filename that keeps the final full path under Windows MAX_PATH.
+    extra_suffix can be used for things like '.pdf', '.txt', or '\\temp_' planning.
+    """
+    MAX_FULL_PATH = 259
+
+    safe_company = sanitize_name(company_name)
+    safe_job_title = sanitize_name(job_title)
+
+    separator = "_"
+    candidate = f"{safe_company}{separator}{safe_job_title}"
+
+    # Reserve length for directory + slash + filename + optional suffix
+    reserved_len = len(os.path.join(output_dir, "")) + len(extra_suffix)
+    max_base_len = MAX_FULL_PATH - reserved_len
+
+    if max_base_len < 20:
+        raise ValueError("Output directory path is too long to safely create files.")
+
+    if len(candidate) <= max_base_len:
+        return candidate
+
+    # Split available space roughly across both parts
+    # account for the underscore between them
+    available = max_base_len - len(separator)
+
+    # Ensure both sides keep some readable content
+    min_each = 8
+    company_share = max(min_each, available // 2)
+    title_share = max(min_each, available - company_share)
+
+    if company_share + title_share > available:
+        title_share = available - company_share
+
+    safe_company = safe_company[:company_share].rstrip("_- ")
+    safe_job_title = safe_job_title[:title_share].rstrip("_- ")
+
+    candidate = f"{safe_company}{separator}{safe_job_title}"
+
+    if len(candidate) > max_base_len:
+        candidate = candidate[:max_base_len].rstrip("_- ")
+
+    return candidate
 
 def main():
     clear_console()
@@ -312,15 +362,7 @@ def main():
     print()
     print("-" * 80)
 
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-    safe_company = "".join(c for c in company_name if c.isalnum() or c in (' ', '-', '_')).strip()
-    safe_company = safe_company.replace(' ', '_')
-
-    safe_job_title = "".join(c for c in job_title if c.isalnum() or c in (' ', '-', '_')).strip()
-    safe_job_title = safe_job_title.replace(' ', '_')
-
-    base_filename = f"{safe_company}_{safe_job_title}_{timestamp}"
+    base_filename = build_safe_base_name(OUTPUT_DIR, company_name, job_title)
 
     job_folder = os.path.join(OUTPUT_DIR, base_filename)
     os.makedirs(job_folder, exist_ok=True)
