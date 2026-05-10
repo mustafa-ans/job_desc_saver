@@ -197,7 +197,12 @@ def delete_exact_matching_docx_for_pdf(pdf_path):
             print(f"✓ Deleted exact matching Word file: {matching_docx}")
             return True
         else:
-            print("ℹ No exact matching Word file found to delete.")
+            # if not found then delete this file "REMOVED_LOCAL_PATH"
+            cover_letter_docx = os.path.join(os.path.dirname(pdf_path), "Cover_Letter_Mustafa_Ansari.docx")
+            if os.path.isfile(cover_letter_docx):
+                os.remove(cover_letter_docx)
+                print(f"✓ Deleted cover letter Word file: {cover_letter_docx}")
+                return True
             return False
     except Exception as e:
         print(f"⚠ Error deleting exact matching Word file: {e}")
