@@ -156,11 +156,11 @@ def append_to_excel(row_data):
         return False
 
 
-def copy_cover_letter_to_folder(source_path, destination_folder):
-    """Copy cover letter file into the job folder"""
+def move_cover_letter_to_folder(source_path, destination_folder):
+    """Move cover letter file into the job folder"""
     try:
         if not source_path.strip():
-            print("⚠ No cover letter path provided. Skipping copy.")
+            print("⚠ No cover letter path provided. Skipping move.")
             return ""
 
         source_path = source_path.strip().strip('"')
@@ -170,12 +170,38 @@ def copy_cover_letter_to_folder(source_path, destination_folder):
             return ""
 
         destination_path = os.path.join(destination_folder, os.path.basename(source_path))
-        shutil.copy2(source_path, destination_path)
-        print(f"✓ Cover letter copied to: {destination_path}")
-        return destination_path
+        moved_path = shutil.move(source_path, destination_path)
+        print(f"✓ Cover letter moved to: {moved_path}")
+        return moved_path
     except Exception as e:
-        print(f"⚠ Error copying cover letter: {e}")
+        print(f"⚠ Error moving cover letter: {e}")
         return ""
+
+
+def delete_exact_matching_docx_for_pdf(pdf_path):
+    """
+    Delete only the DOCX file with the exact same basename as the PDF,
+    in the same folder.
+    Example:
+      Acme_Backend_Developer.pdf -> delete Acme_Backend_Developer.docx
+    """
+    try:
+        pdf_root, pdf_ext = os.path.splitext(pdf_path)
+        if pdf_ext.lower() != ".pdf":
+            return False
+
+        matching_docx = pdf_root + ".docx"
+
+        if os.path.isfile(matching_docx):
+            os.remove(matching_docx)
+            print(f"✓ Deleted exact matching Word file: {matching_docx}")
+            return True
+        else:
+            print("ℹ No exact matching Word file found to delete.")
+            return False
+    except Exception as e:
+        print(f"⚠ Error deleting exact matching Word file: {e}")
+        return False
 
 
 def collect_job_metadata():
@@ -397,11 +423,12 @@ def main():
         print(f"⚠ Temporary Word file kept: {docx_filename}")
         print("  You can manually convert it to PDF")
 
-    copy_to_clipboard(final_created_file)
-
-    print("\n--- Cover Letter Copy ---")
+    print("\n--- Cover Letter Move ---")
     cover_letter_path = input("Enter full path to cover letter file (optional, press Enter to skip): ").strip()
-    copied_cover_letter_path = copy_cover_letter_to_folder(cover_letter_path, job_folder)
+    moved_cover_letter_path = move_cover_letter_to_folder(cover_letter_path, job_folder)
+
+    if moved_cover_letter_path:
+        delete_exact_matching_docx_for_pdf(final_created_file)
 
     print("\n--- Update Excel Tracker ---")
     job_id = input("Job ID (optional): ").strip()
@@ -448,9 +475,12 @@ def main():
     print("=" * 80)
     print("DONE!")
     print(f"Job folder: {job_folder}")
+    print("")
     print(f"Main output file: {final_created_file}")
-    if copied_cover_letter_path:
-        print(f"Copied cover letter: {copied_cover_letter_path}")
+    print("")
+    if moved_cover_letter_path:
+        print(f"Moved cover letter: {moved_cover_letter_path}")
+    print("")
     print(f"Text archive file: {txt_filename}")
     print("=" * 80)
 
