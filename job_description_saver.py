@@ -15,6 +15,7 @@ from docx import Document
 from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from datetime import datetime
+import time
 import os
 import sys
 import shutil
@@ -23,7 +24,10 @@ import pyperclip
 
 OUTPUT_DIR = r"REMOVED_LOCAL_PATH"
 EXCEL_PATH = r"REMOVED_LOCAL_PATH"
-
+CV_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
+COVER_LETTER_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
+COVER_LETTER_MASTER_PATH = r"REMOVED_LOCAL_PATH"
+COVER_LETTER_WORKING_NAME = "Cover_Letter_Mustafa_Ansari.docx"
 
 def clear_console():
     """Clear terminal screen once at script start"""
@@ -178,36 +182,60 @@ def move_cover_letter_to_folder(source_path, destination_folder):
         return ""
 
 
-def delete_exact_matching_docx_for_pdf(pdf_path):
+def archive_and_reset_cover_letter(destination_folder):
     """
-    Delete only the DOCX file with the exact same basename as the PDF,
-    in the same folder.
-    Example:
-      Acme_Backend_Developer.pdf -> delete Acme_Backend_Developer.docx
+    Move the current working cover letter into the job folder,
+    then recreate a fresh working cover letter from the master file.
     """
     try:
-        pdf_root, pdf_ext = os.path.splitext(pdf_path)
-        if pdf_ext.lower() != ".pdf":
-            return False
+        moved_cover_letter_path = ""
+        recreated_cover_letter_path = ""
 
-        matching_docx = pdf_root + ".docx"
+        if not os.path.isfile(COVER_LETTER_SOURCE_PATH):
+            print(f"⚠ Working cover letter not found: {COVER_LETTER_SOURCE_PATH}")
+            return "", ""
 
-        if os.path.isfile(matching_docx):
-            os.remove(matching_docx)
-            print(f"✓ Deleted exact matching Word file: {matching_docx}")
-            return True
-        else:
-            # if not found then delete this file "REMOVED_LOCAL_PATH"
-            cover_letter_docx = os.path.join(os.path.dirname(pdf_path), "Cover_Letter_Mustafa_Ansari.docx")
-            if os.path.isfile(cover_letter_docx):
-                os.remove(cover_letter_docx)
-                print(f"✓ Deleted cover letter Word file: {cover_letter_docx}")
-                return True
-            return False
+        if not os.path.isfile(COVER_LETTER_MASTER_PATH):
+            print(f"⚠ Master cover letter not found: {COVER_LETTER_MASTER_PATH}")
+            return "", ""
+
+        destination_cover_letter_path = os.path.join(
+            destination_folder,
+            COVER_LETTER_WORKING_NAME
+        )
+
+        moved_cover_letter_path = shutil.move(
+            COVER_LETTER_SOURCE_PATH,
+            destination_cover_letter_path
+        )
+        print(f"✓ Cover letter moved to: {moved_cover_letter_path}")
+
+        recreated_cover_letter_path = shutil.copy2(
+            COVER_LETTER_MASTER_PATH,
+            COVER_LETTER_SOURCE_PATH
+        )
+        print(f"✓ Fresh working cover letter recreated: {recreated_cover_letter_path}")
+
+        return moved_cover_letter_path, recreated_cover_letter_path
+
     except Exception as e:
-        print(f"⚠ Error deleting exact matching Word file: {e}")
-        return False
+        print(f"⚠ Error archiving/resetting cover letter: {e}")
+        return "", ""
 
+def copy_cv_to_folder(source_path, destination_folder):
+    """Copy CV PDF into the job folder"""
+    try:
+        if not os.path.isfile(source_path):
+            print(f"⚠ CV file not found: {source_path}")
+            return ""
+
+        destination_path = os.path.join(destination_folder, os.path.basename(source_path))
+        copied_path = shutil.copy2(source_path, destination_path)
+        print(f"✓ CV copied to: {copied_path}")
+        return copied_path
+    except Exception as e:
+        print(f"⚠ Error copying CV: {e}")
+        return ""
 
 def collect_job_metadata():
     """
@@ -290,7 +318,7 @@ def confirm_metadata(company_name, company_website, job_title):
         elif confirm == "n":
             return False
         else:
-            return True
+            print("Please enter 'y' or 'n'.")
 
 def sanitize_name(text):
     text = "".join(c for c in text if c.isalnum() or c in (' ', '-', '_')).strip()
@@ -397,6 +425,12 @@ def main():
 
     job_folder = os.path.join(OUTPUT_DIR, base_filename)
     os.makedirs(job_folder, exist_ok=True)
+    
+    copied_cv_path = copy_cv_to_folder(CV_SOURCE_PATH, job_folder)
+
+    if copied_cv_path:
+        print(f"Copied CV: {copied_cv_path}")
+        print("")
 
     txt_filename = os.path.join(job_folder, f"{base_filename}.txt")
     try:
@@ -428,12 +462,8 @@ def main():
         print(f"⚠ Temporary Word file kept: {docx_filename}")
         print("  You can manually convert it to PDF")
 
-    print("\n--- Cover Letter Move ---")
-    cover_letter_path = input("Enter full path to cover letter file (optional, press Enter to skip): ").strip()
-    moved_cover_letter_path = move_cover_letter_to_folder(cover_letter_path, job_folder)
-
-    if moved_cover_letter_path:
-        delete_exact_matching_docx_for_pdf(final_created_file)
+    print("\n--- Cover Letter Archive & Reset ---")
+    moved_cover_letter_path, recreated_cover_letter_path = archive_and_reset_cover_letter(job_folder)
 
     print("\n--- Update Excel Tracker ---")
     job_id = input("Job ID (optional): ").strip()
@@ -483,11 +513,23 @@ def main():
     print("")
     print(f"Main output file: {final_created_file}")
     print("")
+
     if moved_cover_letter_path:
         print(f"Moved cover letter: {moved_cover_letter_path}")
+        print("")
+
+    if recreated_cover_letter_path:
+        print(f"Recreated working cover letter: {recreated_cover_letter_path}")
+        print("")
+
     print("")
     print(f"Text archive file: {txt_filename}")
     print("=" * 80)
+
+    # wait for 10 seconds and then clear console
+    print("\nThe console will clear in 10 seconds...")
+    time.sleep(10)
+    clear_console()
 
 
 if __name__ == "__main__":
