@@ -21,11 +21,13 @@ import sys
 import shutil
 import openpyxl
 import pyperclip
+import subprocess
 
 OUTPUT_DIR = r"REMOVED_LOCAL_PATH"
 EXCEL_PATH = r"REMOVED_LOCAL_PATH"
 CV_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
+COVER_LETTER_SOURCE_PATH_PDF = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_MASTER_PATH = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_WORKING_NAME = "Cover_Letter_Mustafa_Ansari.docx"
 
@@ -184,12 +186,13 @@ def move_cover_letter_to_folder(source_path, destination_folder):
 
 def archive_and_reset_cover_letter(destination_folder):
     """
-    Move the current working cover letter into the job folder,
+    Move the current working cover letter into the job folder, Also move the cover letter pdf if it exists
     then recreate a fresh working cover letter from the master file.
     """
     try:
         moved_cover_letter_path = ""
         recreated_cover_letter_path = ""
+        moved_cover_letter_pdf_path = ""
 
         if not os.path.isfile(COVER_LETTER_SOURCE_PATH):
             print(f"⚠ Working cover letter not found: {COVER_LETTER_SOURCE_PATH}")
@@ -198,6 +201,14 @@ def archive_and_reset_cover_letter(destination_folder):
         if not os.path.isfile(COVER_LETTER_MASTER_PATH):
             print(f"⚠ Master cover letter not found: {COVER_LETTER_MASTER_PATH}")
             return "", ""
+        
+        if os.path.isfile(COVER_LETTER_SOURCE_PATH_PDF):
+            print(f"✓ Found existing cover letter PDF: {COVER_LETTER_SOURCE_PATH_PDF}")
+            moved_cover_letter_pdf_path = move_cover_letter_to_folder(COVER_LETTER_SOURCE_PATH_PDF, destination_folder)
+            if not moved_cover_letter_pdf_path:
+                print("⚠ Failed to move existing cover letter PDF.")
+        else:
+            print(f"✓ No existing cover letter PDF found at: {COVER_LETTER_SOURCE_PATH_PDF}")
 
         destination_cover_letter_path = os.path.join(
             destination_folder,
@@ -371,8 +382,41 @@ def build_safe_base_name(output_dir, company_name, job_title, extra_suffix=""):
 
     return candidate
 
+def close_excel_tracker_if_open():
+    """Close Excel only if the Job List Mustafa workbook window is open"""
+    try:
+        ps_command = r'''
+        Get-Process EXCEL -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                if ($_.MainWindowTitle -like "*Job List Mustafa*") {
+                    Write-Output "Closing Excel workbook window: $($_.MainWindowTitle)"
+                    Stop-Process -Id $_.Id -Force
+                }
+            }
+            catch {}
+        }
+        '''
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
+            capture_output=True,
+            text=True
+        )
+
+        if result.stdout.strip():
+            print(result.stdout.strip())
+        elif result.returncode == 0:
+            print("✓ Excel tracker was not open.")
+        else:
+            print(f"⚠ PowerShell returned code {result.returncode}")
+            if result.stderr.strip():
+                print(result.stderr.strip())
+
+    except Exception as e:
+        print(f"⚠ Could not check/close Excel tracker: {e}")
+    
 def main():
     clear_console()
+    close_excel_tracker_if_open()
 
     print("=" * 80)
     print("JOB DESCRIPTION SAVER")
@@ -525,12 +569,6 @@ def main():
     print("")
     print(f"Text archive file: {txt_filename}")
     print("=" * 80)
-
-    # wait for 10 seconds and then clear console
-    print("\nThe console will clear in 10 seconds...")
-    time.sleep(10)
-    clear_console()
-
 
 if __name__ == "__main__":
     main()
