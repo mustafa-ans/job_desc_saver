@@ -30,6 +30,21 @@ COVER_LETTER_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_SOURCE_PATH_PDF = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_MASTER_PATH = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_WORKING_NAME = "Cover_Letter_Mustafa_Ansari.docx"
+EXCEL_FIELDS = [
+    ("job_id", "Job ID (optional): ", False),
+    ("portal_choice", "Select portal (1-5): ", False),
+    ("job_link", "Job Link: ", False),
+    ("job_type", "Type (Startup/Mid/Big): ", False),
+    ("industry", "Industry: ", False),
+    ("location", "Location: ", False),
+    ("status", "Status: ", False),
+    ("docs_sent", "Docs Sent: ", False),
+    ("todo_done", "TO-DO (optional): ", False),
+    ("hr_name", "HR Name: ", False),
+    ("hr_contact", "HR Contact: ", False),
+    ("comments", "Comments (optional): ", False),
+    ("id_pw", "ID/PW (optional): ", False),
+]
 
 def clear_console():
     """Clear terminal screen once at script start"""
@@ -413,7 +428,156 @@ def close_excel_tracker_if_open():
 
     except Exception as e:
         print(f"⚠ Could not check/close Excel tracker: {e}")
-    
+
+def collect_excel_fields():
+    """
+    Collect Excel tracker fields with support for:
+    :back    -> go to previous question
+    :restart -> restart Excel field entry
+    :cls     -> clear console and restart Excel field entry
+    :quit    -> exit program
+    """
+    answers = {key: "" for key, _, _ in EXCEL_FIELDS}
+    index = 0
+
+    print("Portal: 1-Linkedin, 2-Direct, 3-Website, 4-Email, 5-Linkedin Easy Apply")
+
+    while index < len(EXCEL_FIELDS):
+        field_key, prompt, required = EXCEL_FIELDS[index]
+        current_value = answers[field_key]
+
+        if current_value:
+            user_input = input(f"{prompt}[current: {current_value}] ").strip()
+        else:
+            user_input = input(prompt).strip()
+
+        cmd = user_input.lower()
+
+        if cmd == ":quit":
+            print("Exiting...")
+            sys.exit(0)
+
+        if cmd == ":restart":
+            print("Restarting Excel field entry...\n")
+            answers = {key: "" for key, _, _ in EXCEL_FIELDS}
+            index = 0
+            print("Portal: 1-Linkedin, 2-Direct, 3-Website, 4-Email, 5-Linkedin Easy Apply")
+            continue
+
+        if cmd == ":cls":
+            clear_console()
+            print("Excel field entry restarted (console cleared).\n")
+            print("Portal: 1-Linkedin, 2-Direct, 3-Website, 4-Email, 5-Linkedin Easy Apply")
+            answers = {key: "" for key, _, _ in EXCEL_FIELDS}
+            index = 0
+            continue
+
+        if cmd == ":back":
+            if index == 0:
+                print("Already at the first Excel field.")
+            else:
+                index -= 1
+                print("Going back to previous question.")
+            continue
+
+        if required and not user_input:
+            print("This field is required!")
+            continue
+
+        if field_key == "portal_choice" and user_input and user_input not in {"1", "2", "3", "4", "5"}:
+            print("Please enter 1, 2, 3, 4, or 5.")
+            continue
+
+        answers[field_key] = user_input
+        index += 1
+
+    return answers
+
+def confirm_excel_fields(data):
+    """
+    Confirm Excel data.
+    Returns:
+        "confirm" -> accept data
+        "restart" -> recollect all fields
+        field_index (int) -> edit one specific field
+    """
+    while True:
+        print("\nPlease confirm Excel tracker data:")
+        for i, (key, _, _) in enumerate(EXCEL_FIELDS, start=1):
+            print(f"{i}. {key}: {data.get(key, '') or '(empty)'}")
+
+        print("\nEnter:")
+        print("  y  -> confirm")
+        print("  n  -> restart all Excel fields")
+        print("  1-13 -> edit a specific field")
+        print("  :cls -> clear console")
+        print("  :quit -> exit")
+
+        choice = input("Your choice: ").strip().lower()
+
+        if choice == "y":
+            return "confirm"
+
+        if choice == "n":
+            return "restart"
+
+        if choice == ":quit":
+            print("Exiting...")
+            sys.exit(0)
+
+        if choice == ":cls":
+            clear_console()
+            continue
+
+        if choice.isdigit():
+            field_num = int(choice)
+            if 1 <= field_num <= len(EXCEL_FIELDS):
+                return field_num - 1
+
+        print("Invalid input. Enter y, n, :cls, :quit, or a field number.")
+
+def edit_excel_field(data, field_index):
+    """Edit one specific Excel field by index"""
+    field_key, prompt, required = EXCEL_FIELDS[field_index]
+
+    while True:
+        current_value = data.get(field_key, "")
+        user_input = input(f"{prompt}[current: {current_value}] ").strip()
+
+        cmd = user_input.lower()
+
+        if cmd == ":quit":
+            print("Exiting...")
+            sys.exit(0)
+
+        if cmd == ":cls":
+            clear_console()
+            print("Editing selected Excel field again.\n")
+            continue
+
+        if cmd == ":back":
+            print("Already editing a single selected field. Re-enter the value or press Enter to keep current.")
+            continue
+
+        if cmd == ":restart":
+            return "restart"
+
+        if not user_input:
+            if current_value:
+                return data
+            if required:
+                print("This field is required!")
+                continue
+
+        if field_key == "portal_choice" and user_input and user_input not in {"1", "2", "3", "4", "5"}:
+            print("Please enter 1, 2, 3, 4, or 5.")
+            continue
+
+        if user_input:
+            data[field_key] = user_input
+
+        return data
+
 def main():
     clear_console()
     close_excel_tracker_if_open()
@@ -469,7 +633,7 @@ def main():
 
     job_folder = os.path.join(OUTPUT_DIR, base_filename)
     os.makedirs(job_folder, exist_ok=True)
-    
+
     copied_cv_path = copy_cv_to_folder(CV_SOURCE_PATH, job_folder)
 
     if copied_cv_path:
@@ -506,45 +670,54 @@ def main():
         print(f"⚠ Temporary Word file kept: {docx_filename}")
         print("  You can manually convert it to PDF")
 
+    copy_to_clipboard(final_created_file)
+
     print("\n--- Cover Letter Archive & Reset ---")
     moved_cover_letter_path, recreated_cover_letter_path = archive_and_reset_cover_letter(job_folder)
 
     print("\n--- Update Excel Tracker ---")
-    job_id = input("Job ID (optional): ").strip()
-    print("Portal: 1-Linkedin, 2-Direct, 3-Website, 4-Email")
-    portal_choice = input("Select portal (1-4): ").strip()
-    job_link = input("Job Link: ").strip()
-    job_type = input("Type (Startup/Mid/Big): ").strip()
-    industry = input("Industry: ").strip()
-    location = input("Location: ").strip()
-    status = input("Status: ").strip()
-    docs_sent = input("Docs Sent: ").strip()
-    todo_done = input("TO-DO (optional): ").strip()
-    hr_name = input("HR Name: ").strip()
-    hr_contact = input("HR Contact: ").strip()
-    comments = input("Comments (optional): ").strip()
-    id_pw = input("ID/PW (optional): ").strip()
+    excel_data = collect_excel_fields()
+
+    while True:
+        action = confirm_excel_fields(excel_data)
+
+        if action == "confirm":
+            break
+
+        if action == "restart":
+            print("\nLet's enter the Excel tracker fields again.\n")
+            excel_data = collect_excel_fields()
+            continue
+
+        if isinstance(action, int):
+            result = edit_excel_field(excel_data, action)
+
+            if result == "restart":
+                print("\nRestarting all Excel tracker fields.\n")
+                excel_data = collect_excel_fields()
+            else:
+                excel_data = result
 
     row_data = [
-        job_title,                              # A: Position
-        job_id,                                 # B: ID
-        datetime.now().strftime("%Y-%m-%d"),    # C: Date
-        "",                                     # D: Interview on
-        "Yes",                                  # E: Applied
-        get_portal_name(portal_choice),         # F: Portal
-        job_link,                               # G: Link
-        company_name,                           # H: Company
-        job_type,                               # I: Type
-        industry,                               # J: Industry
-        location,                               # K: Location
-        status,                                 # L: Status
-        docs_sent,                              # M: Docs
-        todo_done,                              # N: TODO
-        hr_name,                                # O: HR Name
-        hr_contact,                             # P: HR Contact
-        comments,                               # Q: Comments
-        id_pw,                                  # R: ID/PW
-        job_folder                              # S: Path to JD in explorer
+        job_title,                                    # A: Position
+        excel_data["job_id"],                         # B: ID
+        datetime.now().strftime("%Y-%m-%d"),          # C: Date
+        "",                                           # D: Interview on
+        "Yes",                                        # E: Applied
+        get_portal_name(excel_data["portal_choice"]), # F: Portal
+        excel_data["job_link"],                       # G: Link
+        company_name,                                 # H: Company
+        excel_data["job_type"],                       # I: Type
+        excel_data["industry"],                       # J: Industry
+        excel_data["location"],                       # K: Location
+        excel_data["status"],                         # L: Status
+        excel_data["docs_sent"],                      # M: Docs
+        excel_data["todo_done"],                      # N: TODO
+        excel_data["hr_name"],                        # O: HR Name
+        excel_data["hr_contact"],                     # P: HR Contact
+        excel_data["comments"],                       # Q: Comments
+        excel_data["id_pw"],                          # R: ID/PW
+        job_folder                                    # S: Path to JD in explorer
     ]
 
     if append_to_excel(row_data):
@@ -566,7 +739,6 @@ def main():
         print(f"Recreated working cover letter: {recreated_cover_letter_path}")
         print("")
 
-    print("")
     print(f"Text archive file: {txt_filename}")
     print("=" * 80)
 
