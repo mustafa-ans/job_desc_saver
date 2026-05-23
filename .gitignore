@@ -1,2 +1,4 @@
 .env
 backup_before_env_migration/
+**/__pycache__/
+*.pyc
