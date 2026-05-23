@@ -1,0 +1,11 @@
+colorama==0.4.6
+docx2pdf==0.1.8
+et_xmlfile==2.0.0
+lxml==6.1.0
+openpyxl==3.1.5
+pyperclip==1.11.0
+python-docx==1.2.0
+python-dotenv==1.2.2
+pywin32==311
+tqdm==4.67.3
+typing_extensions==4.15.0

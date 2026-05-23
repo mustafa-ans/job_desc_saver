@@ -1,9 +1,25 @@
-OUTPUT_DIR = r"REMOVED_LOCAL_PATH"
-EXCEL_PATH = r"REMOVED_LOCAL_PATH"
-COVER_LETTER_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
-COVER_LETTER_SOURCE_PATH_PDF = r"REMOVED_LOCAL_PATH"
-COVER_LETTER_MASTER_PATH = r"REMOVED_LOCAL_PATH"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "")
+EXCEL_PATH = os.getenv("EXCEL_PATH", "")
+COVER_LETTER_SOURCE_PATH = os.getenv("COVER_LETTER_SOURCE_PATH", "")
+COVER_LETTER_SOURCE_PATH_PDF = os.getenv("COVER_LETTER_SOURCE_PATH_PDF", "")
+COVER_LETTER_MASTER_PATH = os.getenv("COVER_LETTER_MASTER_PATH", "")
 COVER_LETTER_WORKING_NAME = "Cover_Letter_Mustafa_Ansari.docx"
+
+CV_OPTIONS = {
+    "1": {
+        "label": "Backend Engineer CV",
+        "path": os.getenv("CV_BACKEND_PATH", ""),
+    },
+    "2": {
+        "label": "Python AI Dev CV",
+        "path": os.getenv("CV_PYTHON_AI_PATH", ""),
+    },
+}
 
 EXCEL_FIELDS = [
     ("job_id", "Job ID (optional): ", False),
@@ -20,14 +36,3 @@ EXCEL_FIELDS = [
     ("comments", "Comments (optional): ", False),
     ("id_pw", "ID/PW (optional): ", False),
 ]
-
-CV_OPTIONS = {
-    "1": {
-        "label": "Backend Engineer CV",
-        "path": r"REMOVED_LOCAL_PATH",
-    },
-    "2": {
-        "label": "Python AI Dev CV",
-        "path": r"REMOVED_LOCAL_PATH",
-    },
-}
