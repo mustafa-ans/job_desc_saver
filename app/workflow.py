@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 
 from .config import OUTPUT_DIR, CV_SOURCE_PATH
+
 from .document_service import save_raw_text, save_to_word, save_to_pdf
 from .file_service import (
     clear_console,
@@ -12,12 +13,14 @@ from .file_service import (
     build_safe_base_name,
 )
 from .excel_service import close_excel_tracker_if_open, append_to_excel, get_portal_name
+
 from .prompts import (
     collect_job_metadata,
     confirm_metadata,
     collect_excel_fields,
     confirm_excel_fields,
     edit_excel_field,
+    select_cv_source
 )
 
 
@@ -28,6 +31,9 @@ def main():
     print("=" * 80)
     print("JOB DESCRIPTION SAVER")
     print("=" * 80)
+    print()
+    print("Ensure OneDrive is running")
+    print()
     print()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -77,9 +83,11 @@ def main():
     job_folder = os.path.join(OUTPUT_DIR, base_filename)
     os.makedirs(job_folder, exist_ok=True)
 
-    copied_cv_path = copy_cv_to_folder(CV_SOURCE_PATH, job_folder)
+    selected_cv_path, selected_cv_label = select_cv_source()
+    copied_cv_path = copy_cv_to_folder(selected_cv_path, job_folder)
 
     if copied_cv_path:
+        print(f"Selected CV type: {selected_cv_label}")
         print(f"Copied CV: {copied_cv_path}")
         print("")
 

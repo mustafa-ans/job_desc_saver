@@ -1,6 +1,5 @@
 OUTPUT_DIR = r"REMOVED_LOCAL_PATH"
 EXCEL_PATH = r"REMOVED_LOCAL_PATH"
-CV_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_SOURCE_PATH = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_SOURCE_PATH_PDF = r"REMOVED_LOCAL_PATH"
 COVER_LETTER_MASTER_PATH = r"REMOVED_LOCAL_PATH"
@@ -21,3 +20,14 @@ EXCEL_FIELDS = [
     ("comments", "Comments (optional): ", False),
     ("id_pw", "ID/PW (optional): ", False),
 ]
+
+CV_OPTIONS = {
+    "1": {
+        "label": "Backend Engineer CV",
+        "path": r"REMOVED_LOCAL_PATH",
+    },
+    "2": {
+        "label": "Python AI Dev CV",
+        "path": r"REMOVED_LOCAL_PATH",
+    },
+}

@@ -1,5 +1,5 @@
-import sys
-from .config import EXCEL_FIELDS
+import sys, os
+from .config import CV_OPTIONS, EXCEL_FIELDS
 from .file_service import clear_console
 
 
@@ -215,3 +215,40 @@ def edit_excel_field(data, field_index):
             data[field_key] = user_input
 
         return data
+
+def select_cv_source():
+    """
+    Ask which CV to copy.
+    Supports:
+    :cls  -> clear console
+    :quit -> exit program
+    """
+    while True:
+        print("\nSelect CV to copy:")
+        for key, item in CV_OPTIONS.items():
+            print(f"  {key}. {item['label']}")
+            print(f"     {item['path']}")
+
+        choice = input("Choose CV (1-2): ").strip().lower()
+
+        if choice == ":quit":
+            print("Exiting...")
+            sys.exit(0)
+
+        if choice == ":cls":
+            clear_console()
+            continue
+
+        if choice not in CV_OPTIONS:
+            print("Please enter 1 or 2.")
+            continue
+
+        selected = CV_OPTIONS[choice]
+        selected_path = selected["path"]
+
+        if not os.path.isfile(selected_path):
+            print(f"⚠ Selected CV file not found: {selected_path}")
+            continue
+
+        print(f"✓ Selected CV: {selected['label']}")
+        return selected_path, selected["label"]
