@@ -2,7 +2,7 @@ import os
 import sys
 from datetime import datetime
 
-from .config import OUTPUT_DIR, CV_SOURCE_PATH
+from .config import OUTPUT_DIR, CV_OPTIONS
 
 from .document_service import save_raw_text, save_to_word, save_to_pdf
 from .file_service import (
